@@ -311,6 +311,6 @@ Phase 3 (Later)
 
 ---
 
-**Version**: 1.0 | **Last Updated**: 2024  
+**Version**: 1.0 | **Last Updated**: 2026
 **Status**: Phase 1 Complete, Phase 2 In Progress  
 **Next**: Baseline model training & evaluation
