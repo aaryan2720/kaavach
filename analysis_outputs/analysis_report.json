@@ -1,0 +1,228 @@
+{
+  "dataset_info": {
+    "name": "UNSW-NB15",
+    "rows": 82332,
+    "columns": 45,
+    "memory_mb": 44.83543300628662
+  },
+  "class_distribution": {
+    "class_counts": {
+      "1": 45332,
+      "0": 37000
+    },
+    "imbalance_ratio": 1.2251891891891893,
+    "chart": "analysis_outputs\\01_class_distribution.png"
+  },
+  "features": {
+    "numeric_features": [
+      "id",
+      "dur",
+      "spkts",
+      "dpkts",
+      "sbytes",
+      "dbytes",
+      "rate",
+      "sttl",
+      "dttl",
+      "sload",
+      "dload",
+      "sloss",
+      "dloss",
+      "sinpkt",
+      "dinpkt",
+      "sjit",
+      "djit",
+      "swin",
+      "stcpb",
+      "dtcpb",
+      "dwin",
+      "tcprtt",
+      "synack",
+      "ackdat",
+      "smean",
+      "dmean",
+      "trans_depth",
+      "response_body_len",
+      "ct_srv_src",
+      "ct_state_ttl",
+      "ct_dst_ltm",
+      "ct_src_dport_ltm",
+      "ct_dst_sport_ltm",
+      "ct_dst_src_ltm",
+      "is_ftp_login",
+      "ct_ftp_cmd",
+      "ct_flw_http_mthd",
+      "ct_src_ltm",
+      "ct_srv_dst",
+      "is_sm_ips_ports"
+    ],
+    "categorical_features": [
+      "proto",
+      "service",
+      "state",
+      "attack_cat"
+    ],
+    "missing_count": 0,
+    "memory_mb": 44.83543300628662
+  },
+  "distributions": {
+    "high_variance_features": [
+      "stcpb",
+      "dtcpb",
+      "sload",
+      "dload",
+      "sbytes",
+      "dbytes",
+      "rate",
+      "sjit",
+      "response_body_len",
+      "id"
+    ],
+    "outliers": {
+      "stcpb": {
+        "count": 0,
+        "percentage": 0.0
+      },
+      "dtcpb": {
+        "count": 0,
+        "percentage": 0.0
+      },
+      "sload": {
+        "count": 6715,
+        "percentage": 8.156002526356703
+      },
+      "dload": {
+        "count": 18112,
+        "percentage": 21.998736821648933
+      },
+      "sbytes": {
+        "count": 9270,
+        "percentage": 11.259291648447748
+      },
+      "dbytes": {
+        "count": 12308,
+        "percentage": 14.949229947043676
+      },
+      "rate": {
+        "count": 6201,
+        "percentage": 7.531700918233494
+      },
+      "sjit": {
+        "count": 6321,
+        "percentage": 7.677452266433464
+      },
+      "response_body_len": {
+        "count": 5657,
+        "percentage": 6.870961473060293
+      },
+      "id": {
+        "count": 0,
+        "percentage": 0.0
+      }
+    }
+  },
+  "correlations": {
+    "high_corr_pairs": [
+      [
+        "spkts",
+        "sbytes",
+        0.9657497410287414
+      ],
+      [
+        "spkts",
+        "sloss",
+        0.9736439932787799
+      ],
+      [
+        "dpkts",
+        "dbytes",
+        0.9764185516958216
+      ],
+      [
+        "dpkts",
+        "dloss",
+        0.9815064328008422
+      ],
+      [
+        "sbytes",
+        "sloss",
+        0.99502719113184
+      ],
+      [
+        "dbytes",
+        "dloss",
+        0.9971088501020646
+      ],
+      [
+        "sinpkt",
+        "is_sm_ips_ports",
+        0.9445057600994802
+      ],
+      [
+        "swin",
+        "dwin",
+        0.9601246970559344
+      ],
+      [
+        "tcprtt",
+        "synack",
+        0.9394732071062888
+      ],
+      [
+        "ct_srv_src",
+        "ct_dst_src_ltm",
+        0.9337952137616565
+      ],
+      [
+        "ct_srv_src",
+        "ct_srv_dst",
+        0.9778491535974652
+      ],
+      [
+        "ct_dst_ltm",
+        "ct_src_dport_ltm",
+        0.9604008284955233
+      ],
+      [
+        "ct_dst_ltm",
+        "ct_src_ltm",
+        0.9322524473427766
+      ],
+      [
+        "ct_src_dport_ltm",
+        "ct_dst_sport_ltm",
+        0.9116374681078989
+      ],
+      [
+        "ct_src_dport_ltm",
+        "ct_src_ltm",
+        0.9331720623302827
+      ],
+      [
+        "ct_dst_src_ltm",
+        "ct_srv_dst",
+        0.9410468630509295
+      ],
+      [
+        "is_ftp_login",
+        "ct_ftp_cmd",
+        0.9943410042026887
+      ]
+    ]
+  },
+  "attack_categories": {
+    "attack_categories": {
+      "Normal": 37000,
+      "Generic": 18871,
+      "Exploits": 11132,
+      "Fuzzers": 6062,
+      "DoS": 4089,
+      "Reconnaissance": 3496,
+      "Analysis": 677,
+      "Backdoor": 583,
+      "Shellcode": 378,
+      "Worms": 44
+    },
+    "chart": "analysis_outputs\\04_attack_categories.png"
+  }
+}
