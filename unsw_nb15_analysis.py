@@ -12,6 +12,20 @@ This script performs comprehensive EDA on the UNSW-NB15 dataset including:
 
 Usage:
     python unsw_nb15_analysis.py --data UNSW_NB15.csv --outdir analysis_outputs
+
+Chart index:
+    Chart 01 -> analyze_class_distribution()       -> 01_class_distribution.png
+    Chart 02 -> analyze_numeric_distributions()    -> 02_numeric_distributions.png
+    Chart 03 -> analyze_correlations()             -> 03_correlation_heatmap.png
+    Chart 04 -> analyze_attack_categories()        -> 04_attack_categories.png
+    Chart 05 -> analyze_categorical_distributions()-> 05_categorical_distributions.png
+    Chart 06 -> analyze_features_by_class()        -> 06_features_by_class.png
+    Chart 07 -> analyze_boxplots()                 -> 07_boxplots_by_class.png
+    Chart 08 -> analyze_flow_duration_and_rate()   -> 08_flow_characteristics.png
+    Chart 09 -> analyze_bytes_packets_relationship()-> 09_bytes_packets_analysis.png
+    Chart 10 -> analyze_tcp_metrics()              -> 10_tcp_metrics.png
+    Chart 11 -> analyze_contextual_features()      -> 11_contextual_features.png
+    Chart 12 -> analyze_attack_patterns()          -> 12_attack_patterns.png
 """
 
 import argparse
@@ -44,7 +58,10 @@ def detect_label_column(df: pd.DataFrame) -> str:
 
 
 def analyze_class_distribution(df: pd.DataFrame, label_col: str, outdir: Path) -> dict:
-    """Analyze class distribution and imbalance."""
+    """[Chart 01] Analyze class distribution and imbalance.
+
+    Output: 01_class_distribution.png
+    """
     print("\n" + "=" * 70)
     print("CLASS DISTRIBUTION ANALYSIS")
     print("=" * 70)
@@ -141,7 +158,10 @@ def analyze_features(df: pd.DataFrame, label_col: str, outdir: Path) -> dict:
 
 
 def analyze_numeric_distributions(df: pd.DataFrame, numeric_cols: list, outdir: Path) -> dict:
-    """Analyze distributions and outliers in numeric features."""
+    """[Chart 02] Analyze distributions and outliers in numeric features.
+
+    Output: 02_numeric_distributions.png
+    """
     print("\n" + "=" * 70)
     print("NUMERIC FEATURE DISTRIBUTIONS")
     print("=" * 70)
@@ -196,7 +216,10 @@ def analyze_numeric_distributions(df: pd.DataFrame, numeric_cols: list, outdir: 
 
 
 def analyze_correlations(df: pd.DataFrame, numeric_cols: list, outdir: Path) -> dict:
-    """Analyze feature correlations and multicollinearity."""
+    """[Chart 03] Analyze feature correlations and multicollinearity.
+
+    Output: 03_correlation_heatmap.png
+    """
     print("\n" + "=" * 70)
     print("CORRELATION & MULTICOLLINEARITY ANALYSIS")
     print("=" * 70)
@@ -242,7 +265,10 @@ def analyze_correlations(df: pd.DataFrame, numeric_cols: list, outdir: Path) -> 
 
 
 def analyze_categorical_distributions(df: pd.DataFrame, outdir: Path) -> dict:
-    """Analyze categorical feature distributions."""
+    """[Chart 05] Analyze categorical feature distributions.
+
+    Output: 05_categorical_distributions.png
+    """
     print("\n" + "=" * 70)
     print("CATEGORICAL FEATURE DISTRIBUTIONS")
     print("=" * 70)
@@ -270,7 +296,10 @@ def analyze_categorical_distributions(df: pd.DataFrame, outdir: Path) -> dict:
 
 
 def analyze_features_by_class(df: pd.DataFrame, label_col: str, outdir: Path) -> dict:
-    """Compare feature distributions between Normal and Attack."""
+    """[Chart 06] Compare feature distributions between Normal and Attack.
+
+    Output: 06_features_by_class.png
+    """
     print("\n" + "=" * 70)
     print("FEATURE DISTRIBUTIONS BY CLASS (Normal vs Attack)")
     print("=" * 70)
@@ -307,7 +336,10 @@ def analyze_features_by_class(df: pd.DataFrame, label_col: str, outdir: Path) ->
 
 
 def analyze_boxplots(df: pd.DataFrame, label_col: str, outdir: Path) -> dict:
-    """Create box plots for outlier detection by class."""
+    """[Chart 07] Create box plots for outlier detection by class.
+
+    Output: 07_boxplots_by_class.png
+    """
     print("\n" + "=" * 70)
     print("BOX PLOTS - OUTLIER DETECTION BY CLASS")
     print("=" * 70)
@@ -345,7 +377,10 @@ def analyze_boxplots(df: pd.DataFrame, label_col: str, outdir: Path) -> dict:
 
 
 def analyze_flow_duration_and_rate(df: pd.DataFrame, label_col: str, outdir: Path) -> dict:
-    """Analyze flow duration and rate patterns."""
+    """[Chart 08] Analyze flow duration and rate patterns.
+
+    Output: 08_flow_characteristics.png
+    """
     print("\n" + "=" * 70)
     print("FLOW CHARACTERISTICS ANALYSIS")
     print("=" * 70)
@@ -393,7 +428,10 @@ def analyze_flow_duration_and_rate(df: pd.DataFrame, label_col: str, outdir: Pat
 
 
 def analyze_bytes_packets_relationship(df: pd.DataFrame, label_col: str, outdir: Path) -> dict:
-    """Analyze bytes vs packets relationships."""
+    """[Chart 09] Analyze bytes vs packets relationships.
+
+    Output: 09_bytes_packets_analysis.png
+    """
     print("\n" + "=" * 70)
     print("BYTES vs PACKETS ANALYSIS")
     print("=" * 70)
@@ -452,7 +490,10 @@ def analyze_bytes_packets_relationship(df: pd.DataFrame, label_col: str, outdir:
 
 
 def analyze_tcp_metrics(df: pd.DataFrame, label_col: str, outdir: Path) -> dict:
-    """Analyze TCP-specific metrics."""
+    """[Chart 10] Analyze TCP-specific metrics.
+
+    Output: 10_tcp_metrics.png
+    """
     print("\n" + "=" * 70)
     print("TCP METRICS ANALYSIS")
     print("=" * 70)
@@ -484,7 +525,10 @@ def analyze_tcp_metrics(df: pd.DataFrame, label_col: str, outdir: Path) -> dict:
 
 
 def analyze_contextual_features(df: pd.DataFrame, label_col: str, outdir: Path) -> dict:
-    """Analyze contextual and count-based features."""
+    """[Chart 11] Analyze contextual and count-based features.
+
+    Output: 11_contextual_features.png
+    """
     print("\n" + "=" * 70)
     print("CONTEXTUAL FEATURES ANALYSIS")
     print("=" * 70)
@@ -518,7 +562,10 @@ def analyze_contextual_features(df: pd.DataFrame, label_col: str, outdir: Path) 
 
 
 def analyze_attack_patterns(df: pd.DataFrame, label_col: str, outdir: Path) -> dict:
-    """Analyze attack patterns by category."""
+    """[Chart 12] Analyze attack patterns by category.
+
+    Output: 12_attack_patterns.png
+    """
     print("\n" + "=" * 70)
     print("ATTACK PATTERNS BY CATEGORY")
     print("=" * 70)
@@ -566,7 +613,10 @@ def analyze_attack_patterns(df: pd.DataFrame, label_col: str, outdir: Path) -> d
 
 
 def analyze_attack_categories(df: pd.DataFrame, outdir: Path) -> dict:
-    """Analyze attack category distribution if available."""
+    """[Chart 04] Analyze attack category distribution if available.
+
+    Output: 04_attack_categories.png
+    """
     print("\n" + "=" * 70)
     print("ATTACK CATEGORY ANALYSIS")
     print("=" * 70)
