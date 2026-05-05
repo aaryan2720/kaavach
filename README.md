@@ -25,6 +25,36 @@ This project develops a **production-ready ML model** for **binary network intru
 
 ---
 
+## 🎯 **Active Development: Full-Stack IDS System**
+
+### 🆕 New: Complete System Workflow & Integration Docs
+
+We've now built a **complete full-stack Intrusion Detection System** with React frontend, FastAPI backend, and live packet capture!
+
+**Start here for the integrated system:**
+
+#### **[WORKFLOW.md](./WORKFLOW.md)** — *Complete system architecture & integration guide*
+- System architecture diagram (frontend → backend → ML model)
+- Frontend-backend connection points
+- All 13 API endpoints with request/response examples
+- Data flow diagrams (live monitoring, batch ingest, manual prediction)
+- Development workflow (local setup, extending APIs)
+- Testing strategy (unit, integration, E2E)
+- Deployment guide (local, Docker, production)
+- Troubleshooting reference
+
+#### **[TESTING.md](./TESTING.md)** — *Test-Driven Development guide*
+- Unit tests (backend + frontend)
+- Integration test examples
+- E2E test examples (Cypress)
+- Test execution & CI/CD setup
+- Test checklist & coverage targets
+- Debugging tips for backend & frontend
+
+#### **[Quick Start (System)](./README.md#-get-started-in-5-minutes)** — *Run the full system in 5 minutes*
+
+---
+
 ## 📚 Documentation Hub
 
 Navigate the complete project documentation:
@@ -81,6 +111,50 @@ Navigate the complete project documentation:
 - Dataset download
 - Data exploration
 - Troubleshooting
+
+---
+
+## 🚀 Quick Start
+
+### Full-Stack System (React + FastAPI + ML)
+
+**Get the complete IDS running in 5 minutes:**
+
+```bash
+# Terminal 1: Backend
+cd "d:\Documents\ML model"
+.\.venv\Scripts\Activate.ps1
+cd api
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# Terminal 2: Frontend
+cd "d:\Documents\ML model\frontend"
+npm run dev
+```
+
+Open `http://localhost:5173` and:
+- ✅ Click "Start Monitor" to capture live packets
+- ✅ Fill the manual prediction form for single classifications
+- ✅ View all events in real-time dashboard
+- ✅ Export logs for analysis
+
+**For detailed setup → [WORKFLOW.md](./WORKFLOW.md#development-workflow)**
+
+---
+
+### ML Model Exploration (Dataset Analysis)
+
+**Already familiar with the project? Start here:**
+
+```bash
+# 1. Explore the trained model & data
+python unsw_nb15_analysis.py
+
+# 2. View outputs
+ls analysis_outputs/  # 12 visualizations + JSON report
+```
+
+For detailed instructions → **[see Model Analysis Guide](./07_QUICK_START.md)**
 
 ---
 

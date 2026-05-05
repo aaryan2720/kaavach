@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
 import threading
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from typing import Any
+import concurrent.futures
 
 from inference import KaavachPredictor
 
@@ -29,13 +32,20 @@ class MonitorEvent:
 
 
 class TrafficMonitor:
-    def __init__(self, predictor: KaavachPredictor) -> None:
+    def __init__(self, predictor: KaavachPredictor, logs_dir: str = "logs") -> None:
         self.predictor = predictor
+        self.logs_dir = Path(logs_dir)
+        self.logs_dir.mkdir(exist_ok=True)
         self._running = False
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
         self._events: deque[dict[str, Any]] = deque(maxlen=500)
         self._icmp_window: dict[str, deque[float]] = defaultdict(lambda: deque(maxlen=50))
+        self._lock = threading.Lock()
+        # Executor used to offload model inference so sniff thread stays responsive
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+        # simple in-memory metrics: counts per minute
+        self._metrics: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "attacks": 0})
 
     @property
     def is_running(self) -> bool:
@@ -69,6 +79,11 @@ class TrafficMonitor:
         self._stop_event.set()
         if self._thread is not None:
             self._thread.join(timeout=2)
+        # shutdown executor to free threads
+        try:
+            self._executor.shutdown(wait=False)
+        except Exception:
+            pass
         self._running = False
         return {"stopped": True, "message": "Traffic monitor stopped."}
 
@@ -82,6 +97,20 @@ class TrafficMonitor:
     def latest_events(self, limit: int = 50) -> list[dict[str, Any]]:
         limit = max(1, min(limit, 200))
         return list(self._events)[-limit:]
+
+    def _get_log_file_path(self) -> Path:
+        """Get today's log file path."""
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        return self.logs_dir / f"{today}_traffic.jsonl"
+
+    def _save_event_to_disk(self, event_dict: dict[str, Any]) -> None:
+        """Append event to daily JSONL log file."""
+        try:
+            log_file = self._get_log_file_path()
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps(event_dict) + "\n")
+        except Exception as e:
+            print(f"Warning: Failed to save event to log file: {e}")
 
     def _sniff_loop(self) -> None:
         while not self._stop_event.is_set():
@@ -122,24 +151,45 @@ class TrafficMonitor:
             "dttl": 0,
         }
 
-        pred = self.predictor.predict_one(features)
+        # Offload prediction and event creation to executor so sniff loop stays responsive
+        try:
+            self._executor.submit(
+                self._process_packet,
+                now_ts,
+                src_ip,
+                dst_ip,
+                proto,
+                features,
+                packet,
+            )
+        except Exception:
+            # Best-effort: if executor rejects, fall back to synchronous processing
+            self._process_packet(now_ts, src_ip, dst_ip, proto, features, packet)
+
+    def _process_packet(self, now_ts: float, src_ip: str, dst_ip: str, proto: str, features: dict[str, Any], packet: Any) -> None:
+        # Run model inference
+        try:
+            pred = self.predictor.predict_one(features)
+        except Exception:
+            pred = {"decision": "normal", "confidence": 0.0}
 
         reason = "model_inference"
-        decision = pred["decision"]
-        confidence = float(pred["confidence"])
+        decision = pred.get("decision", "normal")
+        confidence = float(pred.get("confidence", 0.0))
 
         # Explicit ping detector: ICMP echo-request burst from same source.
         if ICMP in packet and int(packet[ICMP].type) == 8:
-            q = self._icmp_window[src_ip]
-            q.append(now_ts)
-            while q and now_ts - q[0] > 10:
-                q.popleft()
-            if len(q) >= 5:
-                decision = "attack"
-                confidence = max(confidence, 0.99)
-                reason = "icmp_echo_burst"
-            else:
-                reason = "icmp_echo_request"
+            with self._lock:
+                q = self._icmp_window[src_ip]
+                q.append(now_ts)
+                while q and now_ts - q[0] > 10:
+                    q.popleft()
+                if len(q) >= 5:
+                    decision = "attack"
+                    confidence = max(confidence, 0.99)
+                    reason = "icmp_echo_burst"
+                else:
+                    reason = "icmp_echo_request"
 
         event = MonitorEvent(
             timestamp=datetime.now(timezone.utc).isoformat(),
@@ -150,4 +200,68 @@ class TrafficMonitor:
             confidence=round(confidence, 6),
             reason=reason,
         )
-        self._events.append(event.__dict__)
+        event_dict = event.__dict__
+        with self._lock:
+            self._events.append(event_dict)
+            # update metrics
+            minute = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M")
+            self._metrics[minute]["total"] += 1
+            if event_dict.get("decision") == "attack":
+                self._metrics[minute]["attacks"] += 1
+        self._save_event_to_disk(event_dict)
+
+    def ingest_records(self, records: list[dict[str, Any]]) -> dict[str, Any]:
+        """Ingest a list of flow records, run predictions, store events to disk and update metrics.
+
+        This is designed for high-throughput batch uploads.
+        """
+        if not records:
+            return {"count": 0}
+
+        try:
+            preds = self.predictor.predict_batch(records)
+        except Exception as exc:
+            return {"count": 0, "error": str(exc)}
+
+        created = 0
+        now_iso = datetime.now(timezone.utc).isoformat()
+        with self._lock:
+            for rec, pred in zip(records, preds):
+                src_ip = rec.get("src_ip") or rec.get("saddr") or "-"
+                dst_ip = rec.get("dst_ip") or rec.get("daddr") or "-"
+                proto = rec.get("proto", "-")
+                event = MonitorEvent(
+                    timestamp=now_iso,
+                    src_ip=str(src_ip),
+                    dst_ip=str(dst_ip),
+                    protocol=str(proto),
+                    decision=pred.get("decision", "normal"),
+                    confidence=float(pred.get("confidence", 0.0)),
+                    reason="batch_ingest",
+                )
+                event_dict = event.__dict__
+                self._events.append(event_dict)
+                self._save_event_to_disk(event_dict)
+                minute = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M")
+                self._metrics[minute]["total"] += 1
+                if event_dict.get("decision") == "attack":
+                    self._metrics[minute]["attacks"] += 1
+                created += 1
+
+        return {"count": created}
+
+    def get_metrics(self, minutes: int = 60) -> dict[str, Any]:
+        """Return recent metrics for the last `minutes` minutes.
+
+        Returns a dict with per-minute buckets (ISO minute string) and totals.
+        """
+        now = datetime.now(timezone.utc)
+        buckets: list[str] = []
+        for i in range(minutes):
+            t = now - timedelta(minutes=i)
+            buckets.append(t.strftime("%Y-%m-%dT%H:%M"))
+
+        data = {b: self._metrics.get(b, {"total": 0, "attacks": 0}) for b in reversed(buckets)}
+        total_events = sum(v["total"] for v in data.values())
+        total_attacks = sum(v["attacks"] for v in data.values())
+        return {"per_minute": data, "total_events": total_events, "total_attacks": total_attacks}

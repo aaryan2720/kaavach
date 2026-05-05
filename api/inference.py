@@ -7,6 +7,7 @@ from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
+import threading
 
 
 class KaavachPredictor:
@@ -25,7 +26,18 @@ class KaavachPredictor:
         with open(metadata_path, "r", encoding="utf-8") as f:
             self.metadata = json.load(f)
 
-        self.model = joblib.load(model_path)
+        # Load model with mmap to reduce memory pressure when possible
+        try:
+            self._model_path = model_path
+            # protect reloads
+            self._lock = threading.Lock()
+            try:
+                self.model = joblib.load(model_path, mmap_mode="r")
+            except TypeError:
+                self.model = joblib.load(model_path)
+        except TypeError:
+            # Older joblib versions may not support mmap_mode
+            self.model = joblib.load(model_path)
         self.numeric_features: list[str] = self.metadata.get("numeric_features", [])
         self.categorical_features: list[str] = self.metadata.get("categorical_features", [])
         self.model_name: str = self.metadata.get("selected_model_name", "unknown")
@@ -47,8 +59,35 @@ class KaavachPredictor:
 
         return normalized
 
+    def _apply_rules(self, record: dict[str, Any]) -> dict | None:
+        """Apply simple rule-based overrides. Return a dict with override
+        decision info or None if no rule matched.
+        Current rules:
+        - If `state` == 'REQ_RST' and `spkts` > 30 => force attack.
+        """
+        state = record.get("state")
+        try:
+            spkts = float(record.get("spkts", 0))
+        except (TypeError, ValueError):
+            spkts = 0.0
+
+        if isinstance(state, str) and state.upper() == "REQ_RST" and spkts > 30:
+            return {
+                "prediction": 1,
+                "decision": "attack",
+                "confidence": 0.99,
+                "threshold": self.threshold,
+                "model_name": self.model_name,
+                "rule": "REQ_RST_spkts_gt_30",
+            }
+        return None
+
     def predict_one(self, record: dict[str, Any]) -> dict[str, Any]:
         row = self._normalize_record(record)
+        # rule-based override
+        rule_res = self._apply_rules(row)
+        if rule_res is not None:
+            return rule_res
         X = pd.DataFrame([row])
         proba = float(self.model.predict_proba(X)[:, 1][0])
         pred = int(proba >= self.threshold)
@@ -66,21 +105,59 @@ class KaavachPredictor:
             return []
 
         rows = [self._normalize_record(r) for r in records]
-        X = pd.DataFrame(rows)
-        probas = self.model.predict_proba(X)[:, 1]
 
         output: list[dict[str, Any]] = []
-        for proba in np.asarray(probas):
-            p = float(proba)
-            pred = int(p >= self.threshold)
-            output.append(
-                {
+        # First apply rule-based overrides and collect indices needing model prediction
+        model_indices: list[int] = []
+        model_rows: list[dict[str, Any]] = []
+        for idx, row in enumerate(rows):
+            rule_res = self._apply_rules(row)
+            if rule_res is not None:
+                output.append(rule_res)
+            else:
+                # placeholder to keep ordering
+                output.append({})
+                model_indices.append(idx)
+                model_rows.append(row)
+
+        if model_rows:
+            X = pd.DataFrame(model_rows)
+            probas = self.model.predict_proba(X)[:, 1]
+            p_iter = iter(np.asarray(probas))
+            for mi in model_indices:
+                p = float(next(p_iter))
+                pred = int(p >= self.threshold)
+                output[mi] = {
                     "prediction": pred,
                     "decision": "attack" if pred == 1 else "normal",
                     "confidence": round(p, 6),
                     "threshold": self.threshold,
                     "model_name": self.model_name,
                 }
-            )
 
         return output
+
+    def reload(self) -> dict[str, Any]:
+        """Reload model artifact and metadata from disk without restarting the server.
+
+        Returns a status dict with keys: success, message.
+        """
+        try:
+            with self._lock:
+                metadata_path = self.models_dir / "model_metadata.json"
+                if metadata_path.exists():
+                    with open(metadata_path, "r", encoding="utf-8") as f:
+                        self.metadata = json.load(f)
+                # reload model artifact
+                try:
+                    new_model = joblib.load(self._model_path, mmap_mode="r")
+                except TypeError:
+                    new_model = joblib.load(self._model_path)
+                self.model = new_model
+                self.numeric_features = self.metadata.get("numeric_features", [])
+                self.categorical_features = self.metadata.get("categorical_features", [])
+                self.model_name = str(self.metadata.get("selected_model_name", self.model_name))
+                self.threshold = float(self.metadata.get("selected_threshold", self.threshold))
+        except Exception as exc:
+            return {"success": False, "message": f"reload failed: {exc}"}
+        return {"success": True, "message": "model reloaded"}
