@@ -9,11 +9,12 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any
 import concurrent.futures
+import sys
 
 from inference import KaavachPredictor
 
 try:
-    from scapy.all import ICMP, IP, sniff  # type: ignore
+    from scapy.all import ICMP, IP, TCP, UDP, conf, sniff  # type: ignore
 
     SCAPY_AVAILABLE = True
 except Exception:
@@ -29,11 +30,19 @@ class MonitorEvent:
     decision: str
     confidence: float
     reason: str
+    length: int = 0
+    src_port: int | None = None
+    dst_port: int | None = None
 
 
 class TrafficMonitor:
-    def __init__(self, predictor: KaavachPredictor, logs_dir: str = "logs") -> None:
+    def __init__(self, predictor: KaavachPredictor, logs_dir: str = "logs", iface: str | None = None) -> None:
         self.predictor = predictor
+        self.iface = iface
+        # On Windows, default to "Wi-Fi" if not specified, as it's the most common active interface
+        if self.iface is None and SCAPY_AVAILABLE and sys.platform == "win32":
+            self.iface = "Wi-Fi"
+            
         self.logs_dir = Path(logs_dir)
         self.logs_dir.mkdir(exist_ok=True)
         self._running = False
@@ -91,7 +100,9 @@ class TrafficMonitor:
         return {
             "running": self._running,
             "backend": self.backend,
+            "backend_available": SCAPY_AVAILABLE,
             "events_buffered": len(self._events),
+            "buffered_events": len(self._events),
         }
 
     def latest_events(self, limit: int = 50) -> list[dict[str, Any]]:
@@ -113,13 +124,19 @@ class TrafficMonitor:
             print(f"Warning: Failed to save event to log file: {e}")
 
     def _sniff_loop(self) -> None:
+        print(f"DEBUG: Starting sniff loop on interface: {self.iface or 'default'}")
         while not self._stop_event.is_set():
-            sniff(
-                filter="ip",
-                prn=self._handle_packet,
-                store=False,
-                timeout=1,
-            )
+            try:
+                sniff(
+                    iface=self.iface,
+                    filter="ip",
+                    prn=self._handle_packet,
+                    store=False,
+                    timeout=1,
+                )
+            except Exception as e:
+                print(f"Sniff error: {e}")
+                time.sleep(2)
         self._running = False
 
     def _handle_packet(self, packet: Any) -> None:
@@ -133,8 +150,20 @@ class TrafficMonitor:
         proto_map = {1: "icmp", 6: "tcp", 17: "udp"}
         proto = proto_map.get(proto_num, str(proto_num))
 
+        # Console logging for real-time verification
+        print(f"📡 [Sniff] {src_ip} -> {dst_ip} ({proto}) | {int(len(packet))} bytes")
+
         ttl = int(getattr(packet[IP], "ttl", 64))
         length = int(len(packet))
+
+        src_port = None
+        dst_port = None
+        if TCP in packet:
+            src_port = int(packet[TCP].sport)
+            dst_port = int(packet[TCP].dport)
+        elif UDP in packet:
+            src_port = int(packet[UDP].sport)
+            dst_port = int(packet[UDP].dport)
 
         # Minimal flow-like feature map (remaining features default to zero/missing in predictor).
         features = {
@@ -161,12 +190,26 @@ class TrafficMonitor:
                 proto,
                 features,
                 packet,
+                length,
+                src_port,
+                dst_port,
             )
         except Exception:
             # Best-effort: if executor rejects, fall back to synchronous processing
-            self._process_packet(now_ts, src_ip, dst_ip, proto, features, packet)
+            self._process_packet(now_ts, src_ip, dst_ip, proto, features, packet, length, src_port, dst_port)
 
-    def _process_packet(self, now_ts: float, src_ip: str, dst_ip: str, proto: str, features: dict[str, Any], packet: Any) -> None:
+    def _process_packet(
+        self,
+        now_ts: float,
+        src_ip: str,
+        dst_ip: str,
+        proto: str,
+        features: dict[str, Any],
+        packet: Any,
+        length: int,
+        src_port: int | None,
+        dst_port: int | None,
+    ) -> None:
         # Run model inference
         try:
             pred = self.predictor.predict_one(features)
@@ -199,6 +242,9 @@ class TrafficMonitor:
             decision=decision,
             confidence=round(confidence, 6),
             reason=reason,
+            length=length,
+            src_port=src_port,
+            dst_port=dst_port,
         )
         event_dict = event.__dict__
         with self._lock:

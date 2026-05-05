@@ -36,9 +36,13 @@ export const api = {
   events: async (limit = 200): Promise<NetworkEvent[]> => {
     const res = await client.get("/monitor/events", { params: { limit } });
     const data = res.data;
-    if (Array.isArray(data)) return data;
-    if (Array.isArray(data?.events)) return data.events;
-    return [];
+    const events = Array.isArray(data) ? data : Array.isArray(data?.events) ? data.events : [];
+
+    if (events.length > 0) {
+      console.log(`📡 Live Traffic Update: ${events.length} packets`, events);
+    }
+
+    return events;
   },
   predict: async (payload: PredictRequest): Promise<PredictResponse> =>
     (await client.post("/predict", payload)).data,

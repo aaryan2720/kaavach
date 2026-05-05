@@ -15,14 +15,17 @@ import {
   getConfidence,
   getDecision,
   getDst,
+  getDstPort,
   getEventTime,
+  getLength,
   getProto,
   getSrc,
+  getSrcPort,
   isAttack,
 } from "@/lib/event-utils";
 import type { NetworkEvent } from "@/lib/types";
 
-const COLS = "120px 1fr 1fr 70px 90px 90px 1fr";
+const COLS = "120px 1fr 60px 1fr 60px 60px 65px 70px 1fr";
 
 interface RowData {
   events: NetworkEvent[];
@@ -44,20 +47,21 @@ function Row({ index, style, events }: RowComponentProps<RowData>) {
     >
       <div className="font-mono text-muted-foreground">{formatTimeUTC(getEventTime(e))}</div>
       <div className="truncate font-mono">{getSrc(e)}</div>
+      <div className="font-mono text-[10px] text-muted-foreground">{getSrcPort(e)}</div>
       <div className="truncate font-mono">{getDst(e)}</div>
+      <div className="font-mono text-[10px] text-muted-foreground">{getDstPort(e)}</div>
       <div className="font-mono uppercase">{getProto(e)}</div>
+      <div className="font-mono text-[10px] text-muted-foreground">{getLength(e)}</div>
       <div>
         <span
           className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
-            attack
-              ? "bg-destructive text-destructive-foreground"
-              : "bg-success/20 text-success"
+            attack ? "bg-destructive text-destructive-foreground" : "bg-success/20 text-success"
           }`}
         >
           {decision}
         </span>
       </div>
-      <div className="font-mono">{conf != null ? `${(conf * 100).toFixed(1)}%` : "—"}</div>
+      <div className="font-mono">{conf != null ? `${(conf * 100).toFixed(0)}%` : "—"}</div>
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -148,8 +152,11 @@ export function LiveEventsTable() {
           >
             <span>Time (UTC)</span>
             <span>Source</span>
+            <span>S Port</span>
             <span>Destination</span>
+            <span>D Port</span>
             <span>Proto</span>
+            <span>Length</span>
             <span>Decision</span>
             <span>Conf.</span>
             <span>Reason</span>

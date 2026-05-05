@@ -31,9 +31,12 @@ import {
   formatTimeUTC,
   getDecision,
   getDst,
+  getDstPort,
   getEventTime,
+  getLength,
   getProto,
   getSrc,
+  getSrcPort,
   isAttack,
 } from "@/lib/event-utils";
 
@@ -171,8 +174,11 @@ function LogsPage() {
                   <TableRow>
                     <TableHead className="text-[10px] uppercase">Time (UTC)</TableHead>
                     <TableHead className="text-[10px] uppercase">Source</TableHead>
+                    <TableHead className="text-[10px] uppercase">S Port</TableHead>
                     <TableHead className="text-[10px] uppercase">Destination</TableHead>
+                    <TableHead className="text-[10px] uppercase">D Port</TableHead>
                     <TableHead className="text-[10px] uppercase">Proto</TableHead>
+                    <TableHead className="text-[10px] uppercase">Length</TableHead>
                     <TableHead className="text-[10px] uppercase">Decision</TableHead>
                     <TableHead className="text-[10px] uppercase">Reason</TableHead>
                   </TableRow>
@@ -193,8 +199,17 @@ function LogsPage() {
                           {formatTimeUTC(getEventTime(e))}
                         </TableCell>
                         <TableCell className="font-mono text-xs">{getSrc(e)}</TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {getSrcPort(e)}
+                        </TableCell>
                         <TableCell className="font-mono text-xs">{getDst(e)}</TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {getDstPort(e)}
+                        </TableCell>
                         <TableCell className="font-mono text-xs uppercase">{getProto(e)}</TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {getLength(e)}
+                        </TableCell>
                         <TableCell>
                           <span
                             className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
@@ -206,7 +221,7 @@ function LogsPage() {
                             {getDecision(e)}
                           </span>
                         </TableCell>
-                        <TableCell className="max-w-[300px] truncate text-xs text-muted-foreground">
+                        <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
                           {e.reason || "—"}
                         </TableCell>
                       </TableRow>

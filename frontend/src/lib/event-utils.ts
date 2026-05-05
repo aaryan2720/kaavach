@@ -15,6 +15,15 @@ export function getProto(e: NetworkEvent): string {
 export function getDecision(e: NetworkEvent): string {
   return ((e.decision as string) || "—").toString().toUpperCase();
 }
+export function getSrcPort(e: NetworkEvent): string {
+  return e.src_port ? e.src_port.toString() : "—";
+}
+export function getDstPort(e: NetworkEvent): string {
+  return e.dst_port ? e.dst_port.toString() : "—";
+}
+export function getLength(e: NetworkEvent): string {
+  return e.length ? `${e.length} B` : "—";
+}
 export function getConfidence(e: NetworkEvent): number | null {
   const c = e.confidence;
   if (typeof c === "number") return c;
