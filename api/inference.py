@@ -92,9 +92,13 @@ class KaavachPredictor:
         proba = float(self.model.predict_proba(X)[:, 1][0])
         pred = int(proba >= self.threshold)
 
+        decision = "normal"
+        if pred == 1:
+            decision = "critical" if proba >= 0.85 else "risk"
+
         return {
             "prediction": pred,
-            "decision": "attack" if pred == 1 else "normal",
+            "decision": decision,
             "confidence": round(proba, 6),
             "threshold": self.threshold,
             "model_name": self.model_name,
@@ -127,9 +131,13 @@ class KaavachPredictor:
             for mi in model_indices:
                 p = float(next(p_iter))
                 pred = int(p >= self.threshold)
+                decision = "normal"
+                if pred == 1:
+                    decision = "critical" if p >= 0.85 else "risk"
+                
                 output[mi] = {
                     "prediction": pred,
-                    "decision": "attack" if pred == 1 else "normal",
+                    "decision": decision,
                     "confidence": round(p, 6),
                     "threshold": self.threshold,
                     "model_name": self.model_name,

@@ -55,7 +55,13 @@ function Row({ index, style, events }: RowComponentProps<RowData>) {
       <div>
         <span
           className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
-            attack ? "bg-destructive text-destructive-foreground" : "bg-success/20 text-success"
+            decision === "CRITICAL"
+              ? "bg-destructive text-destructive-foreground"
+              : decision === "RISK"
+                ? "bg-warning/20 text-warning border border-warning/30"
+                : attack
+                  ? "bg-destructive text-destructive-foreground"
+                  : "bg-success/20 text-success"
           }`}
         >
           {decision}

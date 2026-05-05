@@ -31,7 +31,8 @@ export function getConfidence(e: NetworkEvent): number | null {
 }
 export function isAttack(e: NetworkEvent): boolean {
   const d = getDecision(e);
-  return d === "BLOCK" || d === "ATTACK" || d === "ALERT" || d === "MALICIOUS";
+  const dangerous = ["BLOCK", "ATTACK", "ALERT", "MALICIOUS", "CRITICAL", "RISK"];
+  return dangerous.includes(d);
 }
 
 export function formatTimeUTC(ts: string): string {
