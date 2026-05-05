@@ -17,7 +17,7 @@ from email.mime.multipart import MIMEMultipart
 from inference import KaavachPredictor
 
 try:
-    from scapy.all import ICMP, IP, TCP, UDP, conf, sniff  # type: ignore
+    from scapy.all import ICMP, IP, IPv6, TCP, UDP, conf, sniff  # type: ignore
 
     SCAPY_AVAILABLE = True
 except Exception:
@@ -153,7 +153,7 @@ class TrafficMonitor:
             try:
                 sniff(
                     iface=self.iface,
-                    filter="ip",
+                    filter="ip or ip6",
                     prn=self._handle_packet,
                     store=False,
                     timeout=1,
@@ -164,14 +164,21 @@ class TrafficMonitor:
         self._running = False
 
     def _handle_packet(self, packet: Any) -> None:
-        if IP not in packet:
+        if IP not in packet and IPv6 not in packet:
             return
 
         now_ts = time.time()
-        src_ip = packet[IP].src
-        dst_ip = packet[IP].dst
-        proto_num = int(packet[IP].proto)
-        proto_map = {1: "icmp", 6: "tcp", 17: "udp"}
+        
+        if IP in packet:
+            src_ip = packet[IP].src
+            dst_ip = packet[IP].dst
+            proto_num = int(packet[IP].proto)
+        else:
+            src_ip = packet[IPv6].src
+            dst_ip = packet[IPv6].dst
+            proto_num = int(packet[IPv6].nh) # Next Header
+
+        proto_map = {1: "icmp", 6: "tcp", 17: "udp", 58: "icmp"} # 58 is ICMPv6
         proto = proto_map.get(proto_num, str(proto_num))
 
         # Console logging for real-time verification
@@ -244,8 +251,11 @@ class TrafficMonitor:
         decision = pred.get("decision", "normal")
         confidence = float(pred.get("confidence", 0.0))
 
-        # Explicit ping detector: ICMP echo-request burst from same source.
-        if ICMP in packet and int(packet[ICMP].type) == 8:
+        # Explicit ping detector: ICMP (v4 or v6) echo-request burst from same source.
+        is_icmp = (ICMP in packet and int(packet[ICMP].type) == 8) or \
+                  (proto == "icmp" and IPv6 in packet) # Simplification for IPv6 ICMP
+        
+        if is_icmp:
             with self._lock:
                 q = self._icmp_window[src_ip]
                 q.append(now_ts)
