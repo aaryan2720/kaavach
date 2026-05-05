@@ -10,6 +10,9 @@ from pathlib import Path
 from typing import Any
 import concurrent.futures
 import sys
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from inference import KaavachPredictor
 
@@ -55,6 +58,20 @@ class TrafficMonitor:
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
         # simple in-memory metrics: counts per minute
         self._metrics: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "attacks": 0})
+        self._start_time: float | None = None
+        self._total_processed: int = 0
+        self._attack_alert_counter = 0
+        self._alert_threshold = 5
+        
+        # SMTP Configuration (Placeholder - fill these in!)
+        self.smtp_config = {
+            "enabled": True, # Set to True to enable alerts
+            "host": "smtp.gmail.com",
+            "port": 587,
+            "user": "shreyasbawaskar0812@gmail.com",
+            "pass": "slna tota kgbg tsdl",
+            "recipient": "aaryanchoudhari326@gmail.com"
+        }
 
     @property
     def is_running(self) -> bool:
@@ -77,6 +94,7 @@ class TrafficMonitor:
 
         self._stop_event.clear()
         self._thread = threading.Thread(target=self._sniff_loop, daemon=True)
+        self._start_time = time.time()
         self._thread.start()
         self._running = True
         return {"started": True, "message": "Traffic monitor started."}
@@ -94,6 +112,7 @@ class TrafficMonitor:
         except Exception:
             pass
         self._running = False
+        self._start_time = None
         return {"stopped": True, "message": "Traffic monitor stopped."}
 
     def status(self) -> dict[str, Any]:
@@ -103,6 +122,11 @@ class TrafficMonitor:
             "backend_available": SCAPY_AVAILABLE,
             "events_buffered": len(self._events),
             "buffered_events": len(self._events),
+            "uptime_seconds": int(time.time() - self._start_time) if self._start_time else 0,
+            "total_processed": self._total_processed,
+            "interface": self.iface,
+            "model_name": self.predictor.model_name,
+            "threshold": self.predictor.threshold,
         }
 
     def latest_events(self, limit: int = 50) -> list[dict[str, Any]]:
@@ -228,7 +252,7 @@ class TrafficMonitor:
                 while q and now_ts - q[0] > 10:
                     q.popleft()
                 if len(q) >= 5:
-                    decision = "attack"
+                    decision = "critical"
                     confidence = max(confidence, 0.99)
                     reason = "icmp_echo_burst"
                 else:
@@ -252,8 +276,14 @@ class TrafficMonitor:
             # update metrics
             minute = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M")
             self._metrics[minute]["total"] += 1
-            if event_dict.get("decision") == "attack":
+            if event_dict.get("decision") in ["attack", "critical", "risk"]:
                 self._metrics[minute]["attacks"] += 1
+                self._attack_alert_counter += 1
+                if self._attack_alert_counter >= self._alert_threshold:
+                    self._trigger_email_alert()
+                    self._attack_alert_counter = 0
+
+            self._total_processed += 1
         self._save_event_to_disk(event_dict)
 
     def ingest_records(self, records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -290,9 +320,15 @@ class TrafficMonitor:
                 self._save_event_to_disk(event_dict)
                 minute = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M")
                 self._metrics[minute]["total"] += 1
-                if event_dict.get("decision") == "attack":
+                if event_dict.get("decision") in ["attack", "critical", "risk"]:
                     self._metrics[minute]["attacks"] += 1
+                    self._attack_alert_counter += 1
+                    if self._attack_alert_counter >= self._alert_threshold:
+                        self._trigger_email_alert()
+                        self._attack_alert_counter = 0
+                
                 created += 1
+                self._total_processed += 1
 
         return {"count": created}
 
@@ -311,3 +347,45 @@ class TrafficMonitor:
         total_events = sum(v["total"] for v in data.values())
         total_attacks = sum(v["attacks"] for v in data.values())
         return {"per_minute": data, "total_events": total_events, "total_attacks": total_attacks}
+
+    def _trigger_email_alert(self) -> None:
+        """Offload email sending to the executor."""
+        if not self.smtp_config["enabled"]:
+            return
+        
+        # Capture current stats for the email
+        stats = {
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "total_processed": self._total_processed,
+        }
+        self._executor.submit(self._send_email_alert, stats)
+
+    def _send_email_alert(self, stats: dict[str, Any]) -> None:
+        """Synchronous SMTP send logic."""
+        cfg = self.smtp_config
+        try:
+            msg = MIMEMultipart()
+            msg['From'] = cfg['user']
+            msg['To'] = cfg['recipient']
+            msg['Subject'] = f"🛡️ Kaavach Alert: {self._alert_threshold} New Attacks Detected"
+
+            body = f"""
+            <h2>Kaavach IDS Security Alert</h2>
+            <p>Your IDS system has detected a cluster of attacks.</p>
+            <ul>
+                <li><b>Alert Time:</b> {stats['time']}</li>
+                <li><b>Attack Count:</b> {self._alert_threshold}</li>
+                <li><b>Total Packets Analyzed:</b> {stats['total_processed']}</li>
+            </ul>
+            <p>Please check your dashboard for details on the source IPs and threat levels.</p>
+            """
+            msg.attach(MIMEText(body, 'html'))
+
+            server = smtplib.SMTP(cfg['host'], cfg['port'])
+            server.starttls()
+            server.login(cfg['user'], cfg['pass'])
+            server.send_message(msg)
+            server.quit()
+            print(f"✅ Security Alert Email Sent to {cfg['recipient']}")
+        except Exception as e:
+            print(f"❌ Failed to send email alert: {e}")
