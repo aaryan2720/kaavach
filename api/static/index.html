@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kaavach IDS</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1a2330;
+      --accent: #0057b8;
+      --ok: #0b8f5a;
+      --bad: #c62828;
+      --muted: #6b7280;
+      --border: #d9e1ec;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      background: radial-gradient(circle at top right, #e7f1ff, var(--bg));
+      color: var(--text);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .wrap {
+      max-width: 880px;
+      margin: 0 auto;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 6px 24px rgba(8, 25, 54, 0.08);
+      margin-bottom: 16px;
+    }
+    h1 { margin: 0 0 8px; font-size: 1.6rem; }
+    p { margin: 0 0 12px; color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    label { font-size: 0.85rem; color: var(--muted); display: block; margin-bottom: 6px; }
+    input, select {
+      width: 100%;
+      padding: 9px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+    button {
+      margin-top: 12px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 9px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .result {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fafcff;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .normal { background: var(--ok); }
+    .attack { background: var(--bad); }
+    .muted { color: var(--muted); font-size: 0.85rem; }
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .secondary {
+      background: #4b5b73;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.88rem;
+    }
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    th { color: var(--muted); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Kaavach IDS Middleware Demo</h1>
+      <p>Enter basic network flow features. The model returns <strong>normal</strong> or <strong>attack</strong>.</p>
+      <div class="row">
+        <div style="flex:1; min-width:280px;">
+          <label>API Base URL</label>
+          <input id="apiBase" value="" placeholder="http://localhost:8000" />
+        </div>
+        <div>
+          <button id="saveApiBaseBtn" class="secondary">Save API URL</button>
+        </div>
+      </div>
+      <div class="grid">
+        <div><label>proto</label><select id="proto"><option>tcp</option><option>udp</option><option>icmp</option></select></div>
+        <div><label>service</label><input id="service" value="-" /></div>
+        <div><label>state</label><input id="state" value="INT" /></div>
+        <div><label>dur</label><input id="dur" type="number" step="0.0001" value="0.1" /></div>
+        <div><label>spkts</label><input id="spkts" type="number" value="10" /></div>
+        <div><label>dpkts</label><input id="dpkts" type="number" value="8" /></div>
+        <div><label>sbytes</label><input id="sbytes" type="number" value="1200" /></div>
+        <div><label>dbytes</label><input id="dbytes" type="number" value="900" /></div>
+        <div><label>rate</label><input id="rate" type="number" step="0.01" value="200" /></div>
+        <div><label>sttl</label><input id="sttl" type="number" value="64" /></div>
+        <div><label>dttl</label><input id="dttl" type="number" value="64" /></div>
+      </div>
+      <button id="runBtn">Analyze Traffic</button>
+      <div class="result" id="resultBox">Awaiting input...</div>
+      <div class="muted">Note: Missing fields are auto-filled by the model defaults in middleware.</div>
+    </div>
+
+    <div class="card">
+      <h1>Live Network Monitor</h1>
+      <p>Starts backend packet sniffing on this machine and reports normal/attack events. ICMP ping bursts are flagged as attack.</p>
+      <div class="row">
+        <button id="startMonitorBtn">Start Monitor</button>
+        <button id="stopMonitorBtn" class="secondary">Stop Monitor</button>
+        <button id="refreshEventsBtn" class="secondary">Refresh Events</button>
+      </div>
+      <div class="result" id="monitorStatusBox">Monitor idle.</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Time (UTC)</th>
+            <th>Source</th>
+            <th>Destination</th>
+            <th>Proto</th>
+            <th>Decision</th>
+            <th>Reason</th>
+            <th>Confidence</th>
+          </tr>
+        </thead>
+        <tbody id="eventsBody"></tbody>
+      </table>
+      <div class="muted">Tip: On Windows, install Npcap and run server terminal as Administrator for sniffing.</div>
+    </div>
+  </div>
+
+  <script>
+    const runBtn = document.getElementById('runBtn');
+    const resultBox = document.getElementById('resultBox');
+    const startMonitorBtn = document.getElementById('startMonitorBtn');
+    const stopMonitorBtn = document.getElementById('stopMonitorBtn');
+    const refreshEventsBtn = document.getElementById('refreshEventsBtn');
+    const monitorStatusBox = document.getElementById('monitorStatusBox');
+    const eventsBody = document.getElementById('eventsBody');
+    const apiBaseInput = document.getElementById('apiBase');
+    const saveApiBaseBtn = document.getElementById('saveApiBaseBtn');
+
+    const storedBase = localStorage.getItem('kaavach_api_base');
+    if (storedBase) {
+      apiBaseInput.value = storedBase;
+    }
+
+    function getApiBase() {
+      const val = (apiBaseInput.value || '').trim();
+      return val ? val.replace(/\/$/, '') : window.location.origin;
+    }
+
+    function apiUrl(path) {
+      return `${getApiBase()}${path}`;
+    }
+
+    async function apiFetch(path, options) {
+      return fetch(apiUrl(path), options);
+    }
+
+    saveApiBaseBtn.addEventListener('click', () => {
+      localStorage.setItem('kaavach_api_base', getApiBase());
+      monitorStatusBox.textContent = `API base saved: ${getApiBase()}`;
+    });
+
+    function getVal(id) {
+      return document.getElementById(id).value;
+    }
+
+    runBtn.addEventListener('click', async () => {
+      const payload = {
+        features: {
+          proto: getVal('proto'),
+          service: getVal('service'),
+          state: getVal('state'),
+          dur: Number(getVal('dur')),
+          spkts: Number(getVal('spkts')),
+          dpkts: Number(getVal('dpkts')),
+          sbytes: Number(getVal('sbytes')),
+          dbytes: Number(getVal('dbytes')),
+          rate: Number(getVal('rate')),
+          sttl: Number(getVal('sttl')),
+          dttl: Number(getVal('dttl'))
+        }
+      };
+
+      resultBox.textContent = 'Analyzing...';
+
+      try {
+        const res = await apiFetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          resultBox.textContent = `Request failed: ${data.detail || 'unknown error'}`;
+          return;
+        }
+
+        const badgeClass = data.decision === 'attack' ? 'attack' : 'normal';
+        resultBox.innerHTML = `
+          <div><span class="badge ${badgeClass}">${data.decision.toUpperCase()}</span></div>
+          <div>Prediction: <strong>${data.prediction}</strong></div>
+          <div>Confidence: <strong>${data.confidence}</strong></div>
+          <div>Threshold: <strong>${data.threshold}</strong></div>
+          <div class="muted">Model: ${data.model_name}</div>
+        `;
+      } catch (err) {
+        resultBox.textContent = `Error: ${err.message}`;
+      }
+    });
+
+    function renderEvents(events) {
+      eventsBody.innerHTML = '';
+      const latest = [...events].reverse().slice(0, 25);
+      for (const e of latest) {
+        const tr = document.createElement('tr');
+        const decisionBadge = e.decision === 'attack'
+          ? `<span class="badge attack">ATTACK</span>`
+          : `<span class="badge normal">NORMAL</span>`;
+        tr.innerHTML = `
+          <td>${e.timestamp || ''}</td>
+          <td>${e.src_ip || ''}</td>
+          <td>${e.dst_ip || ''}</td>
+          <td>${e.protocol || ''}</td>
+          <td>${decisionBadge}</td>
+          <td>${e.reason || ''}</td>
+          <td>${e.confidence ?? ''}</td>
+        `;
+        eventsBody.appendChild(tr);
+      }
+    }
+
+    async function refreshMonitorStatusAndEvents() {
+      const res = await apiFetch('/monitor/events?limit=100');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 404) {
+          monitorStatusBox.textContent = `Monitor error: Not Found at ${apiUrl('/monitor/events')} (restart API server or fix API base URL).`;
+          return;
+        }
+        monitorStatusBox.textContent = `Monitor error: ${data.detail || 'unknown error'}`;
+        return;
+      }
+      const status = data.status || {};
+      monitorStatusBox.textContent = `Running: ${status.running} | Backend: ${status.backend} | Buffered events: ${status.events_buffered}`;
+      renderEvents(data.events || []);
+    }
+
+    startMonitorBtn.addEventListener('click', async () => {
+      const res = await apiFetch('/monitor/start', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      monitorStatusBox.textContent = data.message || JSON.stringify(data);
+      await refreshMonitorStatusAndEvents();
+    });
+
+    stopMonitorBtn.addEventListener('click', async () => {
+      const res = await apiFetch('/monitor/stop', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      monitorStatusBox.textContent = data.message || JSON.stringify(data);
+      await refreshMonitorStatusAndEvents();
+    });
+
+    refreshEventsBtn.addEventListener('click', async () => {
+      await refreshMonitorStatusAndEvents();
+    });
+
+    setInterval(() => {
+      refreshMonitorStatusAndEvents().catch(() => {});
+    }, 3000);
+
+    refreshMonitorStatusAndEvents().catch(() => {});
+  </script>
+</body>
+</html>

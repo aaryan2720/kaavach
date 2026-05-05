@@ -1,0 +1,101 @@
+{
+  "project": "kaavach",
+  "dataset": "UNSW_NB15.csv",
+  "rows": 82332,
+  "feature_count_raw": 42,
+  "train_size": 65865,
+  "validation_size": 16467,
+  "numeric_features": [
+    "dur",
+    "spkts",
+    "dpkts",
+    "sbytes",
+    "dbytes",
+    "rate",
+    "sttl",
+    "dttl",
+    "sload",
+    "dload",
+    "sloss",
+    "dloss",
+    "sinpkt",
+    "dinpkt",
+    "sjit",
+    "djit",
+    "swin",
+    "stcpb",
+    "dtcpb",
+    "dwin",
+    "tcprtt",
+    "synack",
+    "ackdat",
+    "smean",
+    "dmean",
+    "trans_depth",
+    "response_body_len",
+    "ct_srv_src",
+    "ct_state_ttl",
+    "ct_dst_ltm",
+    "ct_src_dport_ltm",
+    "ct_dst_sport_ltm",
+    "ct_dst_src_ltm",
+    "is_ftp_login",
+    "ct_ftp_cmd",
+    "ct_flw_http_mthd",
+    "ct_src_ltm",
+    "ct_srv_dst",
+    "is_sm_ips_ports"
+  ],
+  "categorical_features": [
+    "proto",
+    "service",
+    "state"
+  ],
+  "baseline_results": [
+    {
+      "model_name": "logistic_regression",
+      "threshold": 0.8949999999999999,
+      "fpr": 0.0014864864864864865,
+      "precision": 0.9982734264636635,
+      "recall": 0.7014447998235359,
+      "f1": 0.8239409249902837,
+      "roc_auc": 0.9782465892052857,
+      "confusion_matrix": {
+        "tn": 7389,
+        "fp": 11,
+        "fn": 2707,
+        "tp": 6360
+      }
+    },
+    {
+      "model_name": "decision_tree",
+      "threshold": 0.95,
+      "fpr": 0.006486486486486486,
+      "precision": 0.9941291585127201,
+      "recall": 0.8964376309694496,
+      "f1": 0.9427593806182218,
+      "roc_auc": 0.9915940863660617,
+      "confusion_matrix": {
+        "tn": 7352,
+        "fp": 48,
+        "fn": 939,
+        "tp": 8128
+      }
+    }
+  ],
+  "selected_model": {
+    "model_name": "logistic_regression",
+    "threshold": 0.8949999999999999,
+    "fpr": 0.0014864864864864865,
+    "precision": 0.9982734264636635,
+    "recall": 0.7014447998235359,
+    "f1": 0.8239409249902837,
+    "roc_auc": 0.9782465892052857,
+    "confusion_matrix": {
+      "tn": 7389,
+      "fp": 11,
+      "fn": 2707,
+      "tp": 6360
+    }
+  }
+}

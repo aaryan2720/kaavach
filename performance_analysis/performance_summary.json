@@ -1,0 +1,74 @@
+{
+  "project": "kaavach",
+  "selected_model": "logistic_regression",
+  "selected_threshold": 0.8949999999999999,
+  "evaluation": {
+    "logistic_regression": {
+      "train": {
+        "threshold": 0.8949999999999999,
+        "fpr": 0.0014527027027027026,
+        "precision": 0.9983245665302942,
+        "recall": 0.7065214394043844,
+        "f1": 0.8274503471661553,
+        "roc_auc": 0.9782025708839959,
+        "tn": 29557,
+        "fp": 43,
+        "fn": 10643,
+        "tp": 25622
+      },
+      "val": {
+        "threshold": 0.8949999999999999,
+        "fpr": 0.0014864864864864865,
+        "precision": 0.9982734264636635,
+        "recall": 0.7014447998235359,
+        "f1": 0.8239409249902837,
+        "roc_auc": 0.9782465892052857,
+        "tn": 7389,
+        "fp": 11,
+        "fn": 2707,
+        "tp": 6360
+      },
+      "generalization_gap_f1": 0.0035094221758715793
+    },
+    "decision_tree": {
+      "train": {
+        "threshold": 0.95,
+        "fpr": 0.002466216216216216,
+        "precision": 0.9977980212355212,
+        "recall": 0.9121466979181029,
+        "f1": 0.9530518460895746,
+        "roc_auc": 0.9966488400885375,
+        "tn": 29527,
+        "fp": 73,
+        "fn": 3186,
+        "tp": 33079
+      },
+      "val": {
+        "threshold": 0.95,
+        "fpr": 0.006486486486486486,
+        "precision": 0.9941291585127201,
+        "recall": 0.8964376309694496,
+        "f1": 0.9427593806182218,
+        "roc_auc": 0.9915940863660617,
+        "tn": 7352,
+        "fp": 48,
+        "fn": 939,
+        "tp": 8128
+      },
+      "generalization_gap_f1": 0.010292465471352763
+    }
+  },
+  "improvement_suggestions": [
+    "Recall is below target (>0.85). Keep FPR guardrail, then train ensemble models (Random Forest/XGBoost) and retune threshold to increase attack catch rate.",
+    "Run stratified 5-fold cross-validation and report mean/std for FPR, precision, recall to ensure threshold stability.",
+    "Calibrate probabilities (Platt or isotonic) before threshold tuning for more reliable confidence scores.",
+    "Proceed with cross-dataset validation (CICIDS) to quantify domain-shift and robustness before production rollout."
+  ],
+  "charts": [
+    "plots/01_roc_curve_comparison.png",
+    "plots/02_precision_recall_curve_comparison.png",
+    "plots/03_threshold_tradeoff_selected_model.png",
+    "plots/04_confusion_matrix_comparison.png",
+    "plots/05_score_distribution_selected_model.png"
+  ]
+}
